@@ -1,0 +1,4 @@
+selenium
+python_dotenv
+webdriver_manager
+google-genai
