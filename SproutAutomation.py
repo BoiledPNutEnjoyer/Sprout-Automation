@@ -9,8 +9,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 import re
 import time
-import google.generativeai as genai
-from google.generativeai import types
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import os
 
