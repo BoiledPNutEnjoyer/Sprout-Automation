@@ -224,8 +224,11 @@ for i in range(card_count):
                 approver_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='reply-approvers-select']"))
                 )
-                approver_button.click()
+                # click in the middle of the button to avoid click interception
+                actions = ActionChains(driver)
+                actions.move_to_element(approver_button).click().perform()
                 time.sleep(0.3)
+
                 # select morgan
                 li_element = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//li[@data-qa-menu-item='Morgan Asuke']"))
@@ -236,12 +239,17 @@ for i in range(card_count):
                 button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='Submit For Approval']"))
                 )
-                button.click()
+                # click in the middle of the button to avoid click interception
+                actions = ActionChains(driver)
+                actions.move_to_element(button).click().perform()
+
                 time.sleep(1.5)
                 close_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'TakeoverTitle-close')]"))
                 )
-                close_button.click()
+                # click in the middle of the button to avoid click interception
+                actions = ActionChains(driver)
+                actions.move_to_element(close_button).click().perform()
 
                 print("reply auto-generated")
 
