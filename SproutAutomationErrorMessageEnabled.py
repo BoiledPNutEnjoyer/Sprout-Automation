@@ -219,25 +219,10 @@ for i in range(card_count):
                 # type the review
                 review_reply = generate_business_reply(message_text)
                 editable_div.send_keys(review_reply)
-
-                # open list of approvers
-                approver_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='reply-approvers-select']"))
-                )
-                # click in the middle of the button to avoid click interception
-                actions = ActionChains(driver)
-                actions.move_to_element(approver_button).click().perform()
-                time.sleep(0.3)
-
-                # select morgan
-                li_element = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//li[@data-qa-menu-item='Morgan Asuke']"))
-                )
-                li_element.click()
-
+                time.sleep(0.5)
                 # submit review
                 button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='Submit For Approval']"))
+                    EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='Send']"))
                 )
                 # click in the middle of the button to avoid click interception
                 actions = ActionChains(driver)
