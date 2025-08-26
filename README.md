@@ -6,4 +6,4 @@
 
 #how to run
 1. run SproutAutomation.py
-2. in the window that is opened, login to sprout with an account set up to send replies with approval
+2. in the window that is opened, login to sprout with an account set up to send replies without approval

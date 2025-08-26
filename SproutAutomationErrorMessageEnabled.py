@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 import os
 
 API_KEY = os.getenv("API_KEY")
-print(API_KEY)
+#print(API_KEY)
 
 def generate_business_reply(review):
     try:
@@ -37,10 +37,35 @@ def generate_business_reply(review):
                 ),
             )
 
-        return response.text
+        return ''.join(c for c in response.text if ord(c) <= 0xFFFF)
     except Exception as e:
         print(f"Error in business reply generation:{e}")
+        os._exit(1)
         return f"Error in business reply generation:{e}"
+
+
+#######used for businesses with ' or " in the name
+def escape_xpath_string(s):
+    if '"' in s and "'" in s:
+        parts = s.split("'")
+        return "concat(" + ", \"'\", ".join([f"'{part}'" for part in parts]) + ")"
+    elif "'" in s:
+        return f'"{s}"'  # wrap with double quotes
+    else:
+        return f"'{s}'"  # wrap with single quotes
+
+# Wait until all reviews are fully loaded (count stabilizes)
+def reviews_loaded(driver):
+    xpath = "//div[@data-qa-message-type='gmb_review' or @data-qa-message-type='yelp_review']"
+    prev_count = -1
+    for _ in range(5):
+        elements = driver.find_elements(By.XPATH, xpath)
+        count = len(elements)
+        if count == prev_count:
+            return elements
+        prev_count = count
+        time.sleep(1)
+    return elements
 
 options = webdriver.ChromeOptions()
 options.add_argument("--start-maximized")
@@ -57,6 +82,24 @@ driver.get("https://sproutsocial.com/")
 button = WebDriverWait(driver, 300).until(
     EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='Group Picker']"))
 )
+
+#close the quiz if necessary
+try:
+    close_button = WebDriverWait(driver, 2.5).until(
+        EC.presence_of_element_located((By.XPATH, "//*[contains(@id, 'pendo-close-guide')]"))
+    )
+    close_button.click()
+except TimeoutException:
+    pass
+#close dark mode if necessary
+try:
+    close_button = WebDriverWait(driver, 2.5).until(
+        EC.presence_of_element_located((By.XPATH, "//*[contains(@id, 'pendo-close-guide')]"))
+    )
+    close_button.click()
+except TimeoutException:
+    pass
+
 button.click()
 
 # get total number of businesses
@@ -88,17 +131,6 @@ for i in range(card_count):
     print(f"########################{label}########################")
 
 
-    #######used for businesses with ' or " in the name
-    def escape_xpath_string(s):
-        if '"' in s and "'" in s:
-            parts = s.split("'")
-            return "concat(" + ", \"'\", ".join([f"'{part}'" for part in parts]) + ")"
-        elif "'" in s:
-            return f'"{s}"'  # wrap with double quotes
-        else:
-            return f"'{s}'"  # wrap with single quotes
-
-
     xpath_label = escape_xpath_string(label)
 
     xpath = f"//div[@aria-label={xpath_label}]"
@@ -126,18 +158,7 @@ for i in range(card_count):
         continue
 
 
-    # Wait until all reviews are fully loaded (count stabilizes)
-    def reviews_loaded(driver):
-        xpath = "//div[@data-qa-message-type='gmb_review' or @data-qa-message-type='yelp_review']"
-        prev_count = -1
-        for _ in range(5):
-            elements = driver.find_elements(By.XPATH, xpath)
-            count = len(elements)
-            if count == prev_count:
-                return elements
-            prev_count = count
-            time.sleep(1)
-        return elements
+
 
 
     ###########load reviews, if no reviews skip to next iteration
@@ -153,9 +174,15 @@ for i in range(card_count):
             # print name
             name_element = review.find_element(By.XPATH, ".//h2[@data-qa-name]")
             print(name_element.text.strip())
+
             # print rating
-            rating_element = review.find_element(By.XPATH, ".//div[contains(@class, 'hKGnEb')]")
-            print(int(rating_element.text.strip()[0]))
+            # Find the nested div with an aria-label containing "out of 5"
+            rating_div = review.find_element(By.CSS_SELECTOR, 'div[aria-label*="out of 5"]')
+
+            # Get the aria-label text
+            rating_element = rating_div.get_attribute("aria-label")
+
+            print(int(rating_element.strip()[0]))
             # print message
             try:
                 message_element = review.find_element(By.XPATH, ".//div[@data-qa-message-text]")
@@ -204,10 +231,26 @@ for i in range(card_count):
             print(f"needs_complete = {needs_complete}")
 
             # 4. if positive rating, no reply, and not marked as complete, generate review
-            if int(rating_element.text.strip()[0]) > 3 and needs_reply == True and needs_complete == True:
+            if int(rating_element.strip()[0]) > 3 and needs_reply == True and needs_complete == True:
                 reply_button = WebDriverWait(driver, 5).until(
                     lambda d: review.find_element(By.XPATH, ".//button[@aria-label='Reply']"))
                 reply_button.click()
+
+                #test if the review has already been replied to, if so close the window and continue to the next review
+                try:
+                    div = WebDriverWait(driver, 1).until(
+                        EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Replied to Review on')]"))
+                    )
+                    print("Review already Replied")
+                    close_button = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'TakeoverTitle-close')]"))
+                    )
+                    # click in the middle of the button to avoid click interception
+                    actions = ActionChains(driver)
+                    actions.move_to_element(close_button).click().perform()
+                    continue
+                except TimeoutException:
+                    pass
 
                 editable_div = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, ".//div[@contenteditable='true']"))
@@ -219,7 +262,7 @@ for i in range(card_count):
                 # type the review
                 review_reply = generate_business_reply(message_text)
                 editable_div.send_keys(review_reply)
-                time.sleep(0.5)
+
                 # submit review
                 button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@data-qa-button='Send']"))
@@ -228,7 +271,6 @@ for i in range(card_count):
                 actions = ActionChains(driver)
                 actions.move_to_element(button).click().perform()
 
-                time.sleep(1.5)
                 close_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'TakeoverTitle-close')]"))
                 )
