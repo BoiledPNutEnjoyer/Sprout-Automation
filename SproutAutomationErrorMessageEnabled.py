@@ -270,7 +270,10 @@ for i in range(card_count):
                 # click in the middle of the button to avoid click interception
                 actions = ActionChains(driver)
                 actions.move_to_element(button).click().perform()
+                #sleep for half a second so the close button doesn't override the post
+                time.sleep(0.5)
 
+                #close the current review
                 close_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'TakeoverTitle-close')]"))
                 )
